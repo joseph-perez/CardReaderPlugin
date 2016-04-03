@@ -19,13 +19,23 @@
 //  Copyright 2011 MagTek. All rights reserved.
 //
 
+#import <AudioUnit/AudioUnit.h>
 #import <Foundation/Foundation.h>
 #import <AudioToolbox/AudioToolbox.h>
-#import <AudioUnit/AudioUnit.h>
+#import <CoreBluetooth/CoreBluetooth.h>
 #import <ExternalAccessory/ExternalAccessory.h>
+//#import "MTCardData.h"
 #import "AVFoundation/AVAudioSession.h"
 
-typedef NS_ENUM(NSUInteger, MTSCRATransactionData)
+
+#warning Notification method will be deprecated on next release, please use delegate
+//#define _DBGPRNT
+
+
+@class IMTSCRAData;
+@class MTSCRADevice;
+
+enum
 {
     TLV_OPSTS,
     TLV_CARDSTS,
@@ -72,8 +82,9 @@ typedef NS_ENUM(NSUInteger, MTSCRATransactionData)
     TLV_SESSIONID,
     TLV_MAGNEPRINT,
     TLV_MAGNEPRINT_STS
+    
 };
-
+typedef NSUInteger MTSCRATransactionData;
 
 typedef NS_ENUM(NSUInteger, MTSCRATransactionStatus)
 {
@@ -82,15 +93,17 @@ typedef NS_ENUM(NSUInteger, MTSCRATransactionStatus)
     TRANS_STATUS_ERROR
 };
 
-typedef NS_ENUM(NSUInteger, MTSCRATransactionEvent)
+
+enum
 {
 	TRANS_EVENT_OK = 1,
     TRANS_EVENT_ERROR=2,
     TRANS_EVENT_START = 4,
     
 };
+typedef NSUInteger MTSCRATransactionEvent;
 
-typedef NS_ENUM(NSUInteger, MTSCRACapabilities)
+enum
 {
 	CAP_MASKING = 1,
     CAP_ENCRYPTION=2,
@@ -99,33 +112,113 @@ typedef NS_ENUM(NSUInteger, MTSCRACapabilities)
     CAP_SESSION_ID = 16,
     CAP_DISCOVERY= 32,
 };
+typedef NSUInteger MTSCRACapabilities;
 
-typedef NS_ENUM(NSUInteger, MTSCRADeviceType)
+enum
 {
     MAGTEKAUDIOREADER,
     MAGTEKIDYNAMO,
+    MAGTEKDYNAMAX,
+    MAGTEKEDYNAMO,
     MAGTEKNONE
     
 };
+typedef NSUInteger MTSCRADeviceType;
 
-typedef NS_ENUM(NSUInteger, MTSCRACardDataContent)
+enum
 {
-    MASKED_TRACKDATA,
-    DEVICE_ENCRYPTION_STATUS,
-    ENCRYPTED_TRACK1,
-    ENCRYPTED_TRACK2,
-    ENCRYPTED_TRACK3,
-    MAGNEPRINT_STATUS,
-    ENCRYPTED_MAGNEPRINT,
-    DEVICE_SERIALNUMBER,
-    ENCRYPTED_SESSIONID,
-    DEVICE_KSN     
+    OK,
+    OFF,
+    RESETTING,
+    DISCONNECTED,
+    UNSUPPORTED
+    
 };
+typedef int MTSCRABLEState;
 
-@interface MTSCRA : NSObject <NSStreamDelegate> 
-{ 
+
+@interface MTCardData : NSObject
+{
+    
+}
+
+@property(nonatomic, strong) NSString *cardIIN;
+@property(nonatomic, strong) NSString *cardData;
+@property(nonatomic, strong) NSString *cardLast4;
+@property(nonatomic, strong) NSString *cardName;
+@property(nonatomic, strong) NSString *cardExpDate;
+@property(nonatomic, strong) NSString *cardServiceCode;
+@property(nonatomic, strong) NSString *cardStatus;
+@property(nonatomic, strong) NSString *responseData;
+@property(nonatomic, strong) NSString *maskedTracks;
+@property(nonatomic, strong) NSString *encryptedTrack1;
+@property(nonatomic, strong) NSString *encryptedTrack2;
+@property(nonatomic, strong) NSString *encryptedTrack3;
+@property(nonatomic, strong) NSString *encryptionStatus;
+@property(nonatomic, strong) NSString *maskedTrack1;
+@property(nonatomic, strong) NSString *maskedTrack2;
+@property(nonatomic, strong) NSString *maskedTrack3;
+@property(nonatomic, strong) NSString *trackDecodeStatus;
+@property(nonatomic, strong) NSString *encryptedMagneprint;
+@property(nonatomic, strong) NSString *magneprintStatus;
+@property(nonatomic, strong) NSString *deviceSerialNumber;
+@property(nonatomic, strong) NSString *deviceSerialNumberMagTek;
+@property(nonatomic, strong) NSString *encrypedSessionID;
+@property(nonatomic, strong) NSString *deviceKSN;
+@property(nonatomic, strong) NSString *deviceFirmware;
+@property(nonatomic, strong) NSString *deviceName;
+@property(nonatomic, strong) NSString *deviceCaps;
+@property(nonatomic, strong) NSString *deviceStatus;
+@property(nonatomic, strong) NSString *tlvVersion;
+@property(nonatomic, strong) NSString *devicePartNumber;
+@property(nonatomic, strong) NSString *capMSR;
+@property(nonatomic, strong) NSString *capTracks;
+@property(nonatomic, strong) NSString *capMagStripeEncryption;
+@property(nonatomic, strong) NSString *maskedPAN;
+@property(nonatomic) long cardPANLength;
+@property(nonatomic, strong) NSString *additionalInfoTrack1;
+@property(nonatomic, strong) NSString *additionalInfoTrack2;
+@property(nonatomic, strong) NSString *responseType;
+@property(nonatomic) long batteryLevel;
+@property(nonatomic) long swipeCount;
+@property(nonatomic, strong) NSString *firmware;
+@property(nonatomic, strong) NSString *tagValue;
+@property(nonatomic) int magnePrintLength;
+@property(nonatomic, strong) NSString *cardExpDateMonth;
+@property(nonatomic, strong) NSString *cardExpDateYear;
+@property(nonatomic, strong) NSString *cardPAN;
+@property(nonatomic, strong) NSString *track1DecodeStatus;
+@property(nonatomic, strong) NSString *track2DecodeStatus;
+@property(nonatomic, strong) NSString *track3DecodeStatus;
+@end
+
+
+@protocol MTSCRAEventDelegate <NSObject>
+@optional
+- (void) onDataReceived: (MTCardData*)cardDataObj instance:(id)instance;
+- (void) cardSwipeDidStart:(id)instance;
+- (void) cardSwipeDidGetTransError;
+- (void) onDeviceConnectionDidChange:(MTSCRADeviceType)deviceType connected:(BOOL) connected instance:(id)instance;
+- (void) bleReaderConnected:(CBPeripheral*)peripheral;
+- (void) bleReaderDidDiscoverPeripheral;
+- (void) bleReaderStateUpdated:(MTSCRABLEState)state;
+- (void) onDeviceResponse:(NSData*)data;
+
+//EMV delegate
+- (void) OnTransactionStatus:(NSData*)data;
+- (void) OnDisplayMessageRequest:(NSData*)data;
+- (void) OnUserSelectionRequest:(NSData*)data;
+- (void) OnARQCReceived:(NSData*)data;
+- (void) OnTransactionResult:(NSData*)data;
+- (void) OnEMVCommandResult:(NSData*)data;
+- (void) onDeviceExtendedResponse:(NSString*)data;
+@end
+
+
+@interface MTSCRA : NSObject <NSStreamDelegate>
+{
 @private
-
+    
 	NSString *cardIIN;
 	NSString *cardData;
 	NSString *cardLast4;
@@ -169,7 +262,7 @@ typedef NS_ENUM(NSUInteger, MTSCRACardDataContent)
 	NSString *swipeCount;
 	
     AudioUnit					rioUnit;
-    AURenderCallbackStruct		inputProc;  
+    AURenderCallbackStruct		inputProc;
     
     AudioStreamBasicDescription	thruFormat;
     AudioBufferList             bufferlist;
@@ -192,17 +285,16 @@ typedef NS_ENUM(NSUInteger, MTSCRACardDataContent)
     AVAudioSession *audioSession;
     
     MTSCRADeviceType devType;
-@public    
-    
-    
 }
 
+
+void audioReaderDelegate(void*self, int status);
+
 //Initialize device
--(BOOL) openDevice; 
+-(BOOL) openDevice;
 
 //Close device
 -(BOOL) closeDevice;
-
 
 //Retrieves if the device is connected
 - (BOOL) isDeviceConnected;
@@ -273,8 +365,13 @@ typedef NS_ENUM(NSUInteger, MTSCRACardDataContent)
 //Retrieve MagStripe Encryption Capability
 - (NSString *) getCapMagStripeEncryption;
 
+- (int) getMagnePrintLength;
+
 //Send Commands To The Device
-- (void) sendCommandToDevice:(NSString *)pData; 
+
+- (int) sendCommandToDevice:(NSString *)pData __attribute__((deprecated))  __deprecated_msg("use sendcommandWithLength instead.");
+
+- (int) sendcommandWithLength:(NSString *)command;
 
 //Sets the protocol String for iDynamo
 - (void) setDeviceProtocolString:(NSString *)pData;
@@ -286,6 +383,10 @@ typedef NS_ENUM(NSUInteger, MTSCRACardDataContent)
 
 //Retrieves the Device Type
 - (long) getDeviceType;
+
+
+//Retrieve card PAN
+- (NSString*) getCardPAN;
 
 //Retrieves the Length of teh PAN
 - (int) getCardPANLength;
@@ -308,6 +409,10 @@ typedef NS_ENUM(NSUInteger, MTSCRACardDataContent)
 //Retrieves the Expiration Date
 - (NSString *) getCardExpDate;
 
+- (NSString*) getExpDateMonth;
+
+- (NSString*) getExpDateYear;
+
 //Retrieves the Service Code
 - (NSString *) getCardServiceCode;
 
@@ -316,6 +421,10 @@ typedef NS_ENUM(NSUInteger, MTSCRACardDataContent)
 
 //Retrieves the Track Decode Status
 - (NSString *) getTrackDecodeStatus;
+
+- (NSString*) getTrack1DecodeStatus;
+- (NSString*) getTrack2DecodeStatus;
+- (NSString*) getTrack3DecodeStatus;
 
 //Retrieve Response Type
 - (NSString *) getResponseType;
@@ -328,18 +437,64 @@ typedef NS_ENUM(NSUInteger, MTSCRACardDataContent)
 
 // Clears all the buffer that is stored during card swipe or command response
 - (void) clearBuffers;
+
 //Retrieves the battery Level
 - (long) getBatteryLevel;
+
 //Retrieves the swipe count
 - (long) getSwipeCount;
+
 //Gets the current version of the SDK.
 - (NSString *) getSDKVersion;
+
 //Retrieves the Operation Status
 - (NSString *) getOperationStatus;
+
 //Config Functions
 - (NSString *) getEncryptionStatus;
-//Config Functions
+
+// Stops scanning for surrounding Peripherals
+- (void)stopScanningForPeripherals;
+
+// Starts scanning for surrounding Peripherals
+- (void)startScanningForPeripherals;
+
+// Sets the UUID String
+- (void)setUUIDString:(NSString *)uuidString;
+
+// Retrieves the currently connected Peripheral
+- (CBPeripheral *)getConnectedPeripheral;
+
+// Retrieves the list of Peripherals that are in range and can be connected to
+- (NSMutableArray *)getDiscoveredPeripherals;
+
+// Retrieves the BLE device information
+- (NSDictionary*)getDeviceInformationDictionary;
+
+// Start EMV Transaction
+- (int) startTransaction:(Byte)timeLimit cardType:(Byte)cardType option:(Byte)option amount:(Byte*)amount transactionType:(Byte)transactionType cashBack:(Byte*)cashBack currencyCode:(Byte*)currencyCode reportingOption:(Byte)reportingOption;
+
+//Set User Selection for requests coming from card
+- (int) setUserSelectionResult:(Byte)status selection:(Byte)selection;
+
+//Sample to send resopond back to device
+- (int) setAcquirerResponse:(Byte*)response length:(int)length;
+
+//Cancel Transaction
+- (int) cancelTransaction;
+
+//Check if device support EMV
+- (BOOL) isDeviceEMV;
+
+//send extended command to EMV Devices;
+- (int) sendExtendedCommand:(NSString*)commandIn;
+
+- (NSString*) getTLVPayload;
 
 
+
+
+//MTSCRA Delegate
+@property (nonatomic, weak) id <MTSCRAEventDelegate> delegate;
 
 @end

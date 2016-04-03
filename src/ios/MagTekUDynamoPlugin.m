@@ -2,6 +2,8 @@
 
 #import "MTSCRA.h"
 
+#import <Cordova/CDVPlugin.h>
+
 @interface MagTekUDynamoPlugin ()
 
 @property (strong, nonatomic) MTSCRA* mMagTek;
@@ -16,7 +18,7 @@
 - (void)pluginInitialize
 {
 	self.mMagTek = [[MTSCRA alloc] init];
-    
+
 	[[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(trackDataReady:)
                                                  name:@"trackDataReadyNotification"
@@ -33,7 +35,7 @@
 - (void)isDeviceConnected:(CDVInvokedUrlCommand*)command
 {
 	CDVPluginResult* pluginResult = nil;
-    
+
 	//Make MagTek call to check if device is connected
 	if(self.mMagTek != nil) {
 		self.mDeviceConnected = [self.mMagTek isDeviceConnected];
@@ -42,14 +44,14 @@
 	else {
 		pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"MagTek Plugin was not properly initialized."];
 	}
-    
+
 	[self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
 - (void)isDeviceOpened:(CDVInvokedUrlCommand*)command
 {
 	CDVPluginResult* pluginResult = nil;
-    
+
 	//Make MagTek call to check if device is opened
 	if(self.mMagTek != nil) {
 		self.mDeviceOpened = [self.mMagTek isDeviceOpened];
@@ -58,56 +60,56 @@
 	else {
 		pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"MagTek Plugin was not properly initialized."];
 	}
-    
+
 	[self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
 - (void)openDevice:(CDVInvokedUrlCommand*)command
 {
 	CDVPluginResult* pluginResult = nil;
-    
+
 	//Open MagTek device to start reading card data
 	if(self.mMagTek != nil) {
         if(![self mDeviceOpened]) {
             [self.mMagTek setDeviceType:(MAGTEKIDYNAMO)];
             [self.mMagTek setDeviceProtocolString:(@"com.magtek.idynamo")];
-            
+
             self.mDeviceOpened = [self.mMagTek openDevice];
             if([self.mMagTek isDeviceConnected]) {
                 self.mDeviceConnected = true;
-                
+
                 if([self.mMagTek isDeviceOpened]) {
                     self.mDeviceOpened = true;
                 }
                 else {
                     self.mDeviceOpened = false;
                 }
-                
+
                 pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:self.mDeviceOpened];
             }
             else {
                 //Lets try an uDynamo Reader
                 [self.mMagTek setDeviceType:(MAGTEKAUDIOREADER)];
                 [self.mMagTek setDeviceProtocolString:(@"com.magtek.udynamo")];
-                
+
                 self.mDeviceOpened = [self.mMagTek openDevice];
-                
+
                 if([self.mMagTek isDeviceConnected]) {
                     self.mDeviceConnected = true;
-                    
+
                     if([self.mMagTek isDeviceOpened]) {
                         self.mDeviceOpened = true;
                     }
                     else {
                         self.mDeviceOpened = false;
                     }
-                    
+
                     pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:self.mDeviceOpened];
                 }
                 else {
                     self.mDeviceOpened = false;
                     self.mDeviceConnected = false;
-                    
+
                     pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"No reader attached."];
                 }
             }
@@ -119,14 +121,14 @@
 	else {
 		pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"MagTek Plugin was not properly initialized."];
 	}
-    
+
 	[self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
 - (void)closeDevice:(CDVInvokedUrlCommand*)command
 {
 	CDVPluginResult* pluginResult = nil;
-    
+
 	//Close MagTek device to stop listening to card data and wasting energy
 	if(self.mMagTek != nil) {
 		self.mDeviceOpened = ![self.mMagTek closeDevice];
@@ -135,23 +137,23 @@
 	else {
 		pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"MagTek Plugin was not properly initialized."];
 	}
-    
+
 	[self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
 - (void)listenForEvents:(CDVInvokedUrlCommand*)command
 {
 	CDVPluginResult* pluginResult = nil;
-    
+
 	//Listen for specific events only
 	if(self.mMagTek != nil) {
 		int i;
 		NSString* event;
 		UInt32 event_types = 0;
-        
+
 		for(i = 0; i < [command.arguments count]; i++) {
 			event = [command.arguments objectAtIndex:i];
-            
+
 			if([event  isEqual: @"TRANS_EVENT_OK"]) {
 				event_types |= TRANS_EVENT_OK;
 			}
@@ -162,9 +164,9 @@
 				event_types |= TRANS_EVENT_START;
 			}
 		}
-        
+
 		[self.mMagTek listenForEvents:event_types];
-        
+
         self.mTrackDataListenerCallbackId = command.callbackId;
 	}
 	else {
@@ -176,7 +178,7 @@
 - (void)returnData
 {
 	NSMutableDictionary* data = [NSMutableDictionary dictionaryWithObjectsAndKeys: nil];
-    
+
     if(self.mMagTek != nil)
     {
         if([self.mMagTek getDeviceType] == MAGTEKAUDIOREADER)
@@ -216,7 +218,7 @@
         	[data setObject:[self.mMagTek getTrack3] forKey:@"Track3"];
         	[data setObject:[self.mMagTek getMagnePrint] forKey:@"MagnePrint"];
         	[data setObject:[self.mMagTek getResponseData] forKey:@"RawResponse"];
-            
+
             /*
              NSString *pResponse = [NSString stringWithFormat:@"Response.Type: %@\n" - [self.mMagTek getResponseType],
              "Track.Status: %@\n" -[self.mMagTek getTrackDecodeStatus],
@@ -239,8 +241,8 @@
              "Capability MSR: %@\n" -[self.mMagTek getCapMSR],
              "Capability Tracks: %@\n" -[self.mMagTek getCapTracks],
              "Capability Encryption: %@\n", -[self.mMagTek getCapMagStripeEncryption]]
-             
-             
+
+
              "Card.IIN: %@\n" -[self.mMagTek getCardIIN],
              "Card.Name: %@\n" -[self.mMagTek getCardName],
              "Card.Last4: %@\n" -[self.mMagTek getCardLast4],
@@ -334,14 +336,14 @@
              [self.mMagTek getMagnePrintStatus],
              [self.mMagTek getSessionID],
              [self.mMagTek getDeviceName]];
-             
+
              [self.responseData    setText:pResponse];
              [self.rawResponseData setText:[self.mMagTek getResponseData]];
              */
         }
-        
+
         [self.mMagTek clearBuffers];
-        
+
         CDVPluginResult* pluginResult = nil;
 		pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:data];
 		[self.commandDelegate sendPluginResult:pluginResult callbackId:self.mTrackDataListenerCallbackId];
@@ -353,17 +355,17 @@
 #ifdef _DGBPRNT
     NSLog(@"onDataEvent: %i", [status intValue]);
 #endif
-    
+
 	switch ([status intValue])
     {
         case TRANS_STATUS_OK:
         {
             BOOL bTrackError = NO;
-            
+
             NSString *pstrTrackDecodeStatus = [self.mMagTek getTrackDecodeStatus];
-            
+
             [self returnData];
-            
+
             @try
             {
                 if(pstrTrackDecodeStatus)
@@ -374,26 +376,26 @@
                         NSString *pStrTrack1Status = [pstrTrackDecodeStatus substringWithRange:NSMakeRange(0, 2)];
                         NSString *pStrTrack2Status = [pstrTrackDecodeStatus substringWithRange:NSMakeRange(2, 2)];
                         NSString *pStrTrack3Status = [pstrTrackDecodeStatus substringWithRange:NSMakeRange(4, 2)];
-                        
+
                         if(pStrTrack1Status && pStrTrack2Status && pStrTrack3Status)
                         {
                             if([pStrTrack1Status compare:@"01"] == NSOrderedSame)
                             {
                                 bTrackError=YES;
                             }
-                            
+
                             if([pStrTrack2Status compare:@"01"] == NSOrderedSame)
                             {
                                 bTrackError=YES;
-                                
+
                             }
-                            
+
                             if([pStrTrack3Status compare:@"01"] == NSOrderedSame)
                             {
                                 bTrackError=YES;
-                                
+
                             }
-                            
+
                             NSLog(@"Track1.Status=%@",pStrTrack1Status);
                             NSLog(@"Track2.Status=%@",pStrTrack2Status);
                             NSLog(@"Track3.Status=%@",pStrTrack3Status);
@@ -401,22 +403,22 @@
 #endif
                     }
                 }
-                
+
             }
             @catch(NSException *e)
             {
             }
-            
+
             if(bTrackError == NO)
             {
                 //[self closeDevice];
             }
-            
+
             break;
-            
+
         }
         case TRANS_STATUS_START:
-            
+
             /*
              *
              *  NOTE: TRANS_STATUS_START should be used with caution. CPU intensive tasks done after this events and before
@@ -424,9 +426,9 @@
              *
              */
             break;
-            
+
         case TRANS_STATUS_ERROR:
-            
+
             if(self.mMagTek != NULL)
             {
 #ifdef _DGBPRNT
@@ -434,11 +436,11 @@
 #endif
                 //[self updateConnStatus];
             }
-            
+
             break;
-            
+
         default:
-            
+
             break;
     }
 }
@@ -446,7 +448,7 @@
 - (void)trackDataReady:(NSNotification *)notification
 {
     NSNumber *status = [[notification userInfo] valueForKey:@"status"];
-    
+
     [self performSelectorOnMainThread:@selector(onDataEvent:)
                            withObject:status
                         waitUntilDone:NO];
