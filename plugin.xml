@@ -48,6 +48,12 @@
             <uses-permission android:name="android.permission.RECORD_AUDIO"/>
             <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
         </config-file>
+        <config-file target="AndroidManifest.xml" parent="/manifest/application">
+             <service android:enabled="true" android:name="com.magtek.mobile.android.mtlib.MTAudioService" />
+            <service android:enabled="true" android:name="com.magtek.mobile.android.mtlib.MTBLEService" />
+            <service android:enabled="true" android:name="com.magtek.mobile.android.mtlib.MTBTHService" />
+            <service android:enabled="true" android:name="com.magtek.mobile.android.mtlib.MTUSBService" />
+        </config-file>
         <config-file target="res/xml/config.xml" parent="/*">
             <uses-permission android:name="android.permission.RECORD_AUDIO"/>
             <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>

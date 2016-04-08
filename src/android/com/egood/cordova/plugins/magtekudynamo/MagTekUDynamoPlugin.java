@@ -23,14 +23,19 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
-import com.magtek.mobile.android.scra.MTSCRAException;
-import com.magtek.mobile.android.scra.MagTekSCRA;
-import com.magtek.mobile.android.scra.ProcessMessageResponse;
-import com.magtek.mobile.android.scra.SCRAConfiguration;
-import com.magtek.mobile.android.scra.ConfigParam;
-import com.magtek.mobile.android.scra.SCRAConfigurationDeviceInfo;
-import com.magtek.mobile.android.scra.SCRAConfigurationReaderType;
-import com.magtek.mobile.android.scra.StatusCode;
+import com.magtek.mobile.android.mtlib.MTEMVDeviceConstants;
+import com.magtek.mobile.android.mtlib.MTSCRA;
+import com.magtek.mobile.android.mtlib.MTConnectionType;
+import com.magtek.mobile.android.mtlib.MTSCRAEvent;
+import com.magtek.mobile.android.mtlib.MTSCRAException;
+import com.magtek.mobile.android.mtlib.MTEMVEvent;
+import com.magtek.mobile.android.mtlib.MTConnectionState;
+import com.magtek.mobile.android.mtlib.MTCardDataState;
+import com.magtek.mobile.android.mtlib.MTDeviceConstants;
+import com.magtek.mobile.android.mtlib.IMTCardData;
+import com.magtek.mobile.android.mtlib.config.MTSCRAConfig;
+import com.magtek.mobile.android.mtlib.config.ProcessMessageResponse;
+import com.magtek.mobile.android.mtlib.config.SCRAConfigurationDeviceInfo;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;
@@ -67,7 +72,7 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
 	private static final String CONFIGWS_USERNAME = "magtek";
 	private static final String CONFIGWS_PASSWORD = "p@ssword";
 
-	private AudioManager mAudioMgr;	
+	private AudioManager mAudioMgr;
 
 	//May not need
 	public static final String CONFIG_FILE = "MTSCRADevConfig.cfg";
@@ -78,10 +83,10 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
 	public static final String PARTIAL_AUTH_INDICATOR = "1";
 	// Intent request codes
 	private static final int REQUEST_CONNECT_DEVICE = 1;
-	
-	private MagTekSCRA mMTSCRA;
+
 	//private int miDeviceType=MagTekSCRA.DEVICE_TYPE_NONE;
 	private Handler mSCRADataHandler = new Handler(new SCRAHandlerCallback());
+    private MTSCRA mMTSCRA;
 	final headSetBroadCastReceiver mHeadsetReceiver = new headSetBroadCastReceiver();
 	final NoisyAudioStreamReceiver mNoisyAudioStreamReceiver = new NoisyAudioStreamReceiver();
 
@@ -96,20 +101,23 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
 	private int mIntCurrentStatus;
 
 	private int mIntCurrentVolume;
-	
+
 	private String mStringAudioConfigResult;
 	private CallbackContext mEventListenerCb;
 
+
 	private void InitializeDevice() {
-		if(mMTSCRA == null) {
-			mMTSCRA = new MagTekSCRA(mSCRADataHandler);
-		}
+
+        if (mMTSCRA == null) {
+            mMTSCRA = new MTSCRA(cordova.getActivity().getApplicationContext(), mSCRADataHandler);
+        }
+
 		if(mAudioMgr == null) {
 			mAudioMgr = (AudioManager) cordova.getActivity().getSystemService(Context.AUDIO_SERVICE);
 		}
 
 		InitializeData();
-		
+
 		onResume(false);
 
 		mIntCurrentVolume = mAudioMgr.getStreamVolume(AudioManager.STREAM_MUSIC);
@@ -122,7 +130,7 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
 		mbAudioConnected = false;
 		mIntCurrentVolume = 0;
 		mIntCurrentStatus = STATUS_IDLE;
-		mIntCurrentDeviceStatus = MagTekSCRA.DEVICE_STATE_DISCONNECTED;
+		mIntCurrentDeviceStatus = 0;
 
 		mStringAudioConfigResult = "";
 	}
@@ -143,8 +151,8 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
 				setAudioConfigManual();
 			}
 			else {
-				mMTSCRA.setConfigurationXML(strXMLConfig);
-				mStringLocalConfig = strXMLConfig;
+				// mMTSCRA.setConfigurationXML(strXMLConfig);
+				// mStringLocalConfig = strXMLConfig;
 				return strResult;
 			}
 		} catch(MTSCRAException ex) {
@@ -157,48 +165,48 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
 	void setAudioConfigManual() throws MTSCRAException {
 		String model = android.os.Build.MODEL.toUpperCase();
 
-		try {
-			if(model.contains("DROID RAZR") || model.toUpperCase().contains("XT910")) {
-				mMTSCRA.setConfigurationParams("INPUT_SAMPLE_RATE_IN_HZ=480000,");
-			}
-			else if(model.equals("DROID PRO") || model.equals("MB508") || model.equals("DROIDX") || model.equals("DROID2") || model.equals("MB525")) {
-				mMTSCRA.setConfigurationParams("INPUT_SAMPLE_RATE_IN_HZ=32000,");
-			}
-			else if(model.equals("GT-I9300")||//S3 GSM Unlocked
-	        		 model.equals("SPH-L710")||//S3 Sprint
-	        		 model.equals("SGH-T999")||//S3 T-Mobile
-	        		 model.equals("SCH-I535")||//S3 Verizon
-	        		 model.equals("SCH-R530")||//S3 US Cellular
-	        		 model.equals("SAMSUNG-SGH-I747")||// S3 AT&T
-	        		 model.equals("M532")||//Fujitsu
-	        		 model.equals("GT-N7100")||//Notes 2 
-	        		 model.equals("GT-N7105")||//Notes 2 
-	        		 model.equals("SAMSUNG-SGH-I317")||// Notes 2
-	        		 model.equals("SCH-I605")||// Notes 2
-	        		 model.equals("SCH-R950")||// Notes 2
-	        		 model.equals("SGH-T889")||// Notes 2
-	        		 model.equals("SPH-L900")||// Notes 2
-	        		 model.equals("SAMSUNG-SGH-I337")||// S4
-	        		 model.equals("SAMSUNG-SGH-M919")||// S4
-	        		 model.equals("SAMSUNG-SCH-I545")||// S4
-	        		 model.equals("SAMSUNG-SPH-L720")||// S4
-	        		 model.equals("SAMSUNG-SCH-R970")||// S4
-	        		 model.equals("SAMSUNG-SCH-R970X")||// S4
-	        		 model.equals("SAMSUNG-SCH-R970C")||// S4
-	        		 model.equals("SAMSUNG-SM-G900A")||// S5
-	        		 model.equals("GT-P3113"))//Galaxy Tab 2, 7.0
-    		{
-    			mMTSCRA.setConfigurationParams("INPUT_AUDIO_SOURCE=VRECOG,");
-			}
-			else if(model.equals("XT907")) {
-				mMTSCRA.setConfigurationParams("INPUT_WAVE_FORM=0,");
-			}
-			else {
-				//Using Default Settings for device
-			}
-		} catch(MTSCRAException ex) {
-			throw new MTSCRAException(ex.getMessage());
-		}
+		// try {
+		// 	if(model.contains("DROID RAZR") || model.toUpperCase().contains("XT910")) {
+		// 		mMTSCRA.setDeviceConfiguration("INPUT_SAMPLE_RATE_IN_HZ=480000,");
+		// 	}
+		// 	else if(model.equals("DROID PRO") || model.equals("MB508") || model.equals("DROIDX") || model.equals("DROID2") || model.equals("MB525")) {
+		// 		mMTSCRA.setDeviceConfiguration("INPUT_SAMPLE_RATE_IN_HZ=32000,");
+		// 	}
+		// 	else if(model.equals("GT-I9300")||//S3 GSM Unlocked
+	    //     		 model.equals("SPH-L710")||//S3 Sprint
+	    //     		 model.equals("SGH-T999")||//S3 T-Mobile
+	    //     		 model.equals("SCH-I535")||//S3 Verizon
+	    //     		 model.equals("SCH-R530")||//S3 US Cellular
+	    //     		 model.equals("SAMSUNG-SGH-I747")||// S3 AT&T
+	    //     		 model.equals("M532")||//Fujitsu
+	    //     		 model.equals("GT-N7100")||//Notes 2
+	    //     		 model.equals("GT-N7105")||//Notes 2
+	    //     		 model.equals("SAMSUNG-SGH-I317")||// Notes 2
+	    //     		 model.equals("SCH-I605")||// Notes 2
+	    //     		 model.equals("SCH-R950")||// Notes 2
+	    //     		 model.equals("SGH-T889")||// Notes 2
+	    //     		 model.equals("SPH-L900")||// Notes 2
+	    //     		 model.equals("SAMSUNG-SGH-I337")||// S4
+	    //     		 model.equals("SAMSUNG-SGH-M919")||// S4
+	    //     		 model.equals("SAMSUNG-SCH-I545")||// S4
+	    //     		 model.equals("SAMSUNG-SPH-L720")||// S4
+	    //     		 model.equals("SAMSUNG-SCH-R970")||// S4
+	    //     		 model.equals("SAMSUNG-SCH-R970X")||// S4
+	    //     		 model.equals("SAMSUNG-SCH-R970C")||// S4
+	    //     		 model.equals("SAMSUNG-SM-G900A")||// S5
+	    //     		 model.equals("GT-P3113"))//Galaxy Tab 2, 7.0
+    	// 	{
+    	// 		mMTSCRA.setDeviceConfiguration("INPUT_AUDIO_SOURCE=VRECOG,");
+		// 	}
+		// 	else if(model.equals("XT907")) {
+		// 		mMTSCRA.setDeviceConfiguration("INPUT_WAVE_FORM=0,");
+		// 	}
+		// 	else {
+		// 		//Using Default Settings for device
+		// 	}
+		// } catch(MTSCRAException ex) {
+		// 	throw new MTSCRAException(ex.getMessage());
+		// }
 	}
 
 	String getConfigurationLocal()
@@ -211,9 +219,9 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
 		catch (Exception ex)
 		{
 		}
-		
+
 		return strXMLConfig;
-	
+
 	}
 
 	void setConfigurationLocal(String lpstrConfig)
@@ -224,9 +232,9 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
 		}
 		catch (Exception ex)
 		{
-			
+
 		}
-		
+
 	}
 
 	public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
@@ -234,31 +242,24 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
 
 		if(action.equals("openDevice")) {
 			if(mMTSCRA == null) {
+                Log.i("MTSCRA", "Calling InitializeDevice()");
 				InitializeDevice();
-			}			
+			}
+
+            Log.i("MTSCRA", "mbAudioConnected = " + Boolean.toString(mbAudioConnected));
 
 			if(mbAudioConnected) {
-                if(mMTSCRA.getDeviceType() == MagTekSCRA.DEVICE_TYPE_AUDIO) {
-                    //Thread tSetupAudioParams = new Thread() {
-                    //	public void run() {
-                    try {
-                        mStringAudioConfigResult = setupAudioParameters();
-                    } catch(Exception ex) {
-                        mStringAudioConfigResult = "Error:" + ex.getMessage();
-                    }
-                    //	}
-                    //}
+                mMTSCRA.setConnectionType(MTConnectionType.Audio);
 
-                    //tSetupAudioParams.start();
-                }
-                else {
-                }
                 mMTSCRA.openDevice();
-
+                Log.i("MTSCRA","Device Connected =" + Boolean.toString(mMTSCRA.isDeviceConnected()));
+                Log.i("MTSCRA", "Device Serial =" + mMTSCRA.getDeviceSerial());
+                Log.i("MTSCRA", "Device Battery = " + mMTSCRA.getBatteryLevel());
                 pr = new PluginResult(PluginResult.Status.OK, mMTSCRA.isDeviceConnected());
             } else {
                 pr = new PluginResult(PluginResult.Status.ERROR, "No reader attached.");
             }
+
 		}
 		else if(action.equals("closeDevice")) {
 			mMTSCRA.closeDevice();
@@ -274,17 +275,6 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
 		else if(action.equals("clearCardData")) {
 			pr = new PluginResult(PluginResult.Status.OK);
 		}
-/*		else if(action.equals("setCardData")) {
-			try {
-				;
-			}
-		}
-		else if(action.equals("getTrackDecodeStatus")) {
-			try {
-				;
-			}
-		}
-*/		
 		else if(action.equals("getTrack1")) {
 			pr = new PluginResult(PluginResult.Status.OK, mMTSCRA.getTrack1());
 		}
@@ -315,16 +305,11 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
 		else if(action.equals("getSessionID")) {
 			pr = new PluginResult(PluginResult.Status.OK, mMTSCRA.getSessionID());
 		}
-/*		else if(action.equals("setDeviceProtocolString")) {
-			try {
-				;
-			}
-		}
-*/		
+
 		else if(action.equals("listenForEvents")) {
 			pr = new PluginResult(PluginResult.Status.NO_RESULT);
 			pr.setKeepCallback(true);
-			
+
 			mEventListenerCb = callbackContext;
 		}
 		else if(action.equals("getCardName")) {
@@ -345,13 +330,7 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
 		else if(action.equals("getCardStatus")) {
 			pr = new PluginResult(PluginResult.Status.OK, mMTSCRA.getCardStatus());
 		}
-/*
-		else if(action.equals("setDeviceType")) {
-			try {
-				;
-			}
-		}
-*/
+
 		else if(action.equals("setDeviceType")) {
 			;
 		}
@@ -364,7 +343,7 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
     @Override
     public void onResume(boolean multitasking) {
     	super.onResume(multitasking);
-    	
+
         cordova.getActivity().getApplicationContext().registerReceiver(mHeadsetReceiver, new IntentFilter(Intent.ACTION_HEADSET_PLUG));
         cordova.getActivity().getApplicationContext().registerReceiver(mNoisyAudioStreamReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
 
@@ -438,62 +417,53 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
 
 	private class SCRAHandlerCallback implements Callback {
 		public boolean handleMessage(Message msg) {
-			try {
-				switch(msg.what) {
-					case MagTekSCRA.DEVICE_MESSAGE_STATE_CHANGE:
-						switch(msg.arg1) {
-							case MagTekSCRA.DEVICE_STATE_CONNECTED:
-								mIntCurrentStatus = STATUS_IDLE;
-								mIntCurrentDeviceStatus = MagTekSCRA.DEVICE_STATE_CONNECTED;
-								maxVolume();
-								break;
-							
-							case MagTekSCRA.DEVICE_STATE_CONNECTING:
-								mIntCurrentDeviceStatus = MagTekSCRA.DEVICE_STATE_CONNECTING;
-								break;
-							
-							case MagTekSCRA.DEVICE_STATE_DISCONNECTED:
-								mIntCurrentDeviceStatus = MagTekSCRA.DEVICE_STATE_DISCONNECTED;
-								minVolume();
-								break;
-						}
-						break;
-					
-					case MagTekSCRA.DEVICE_MESSAGE_DATA_START:
-						if(msg.obj != null) {
-							//Unhandled event
-							return true;
-						}
-						break;
-					
-					case MagTekSCRA.DEVICE_MESSAGE_DATA_CHANGE:
-						if(msg.obj != null) {
-							sendCardData();
 
-							msg.obj = null;
+            Log.i("MTSCRA", "message =" + msg.what);
 
-							if(mStringLocalConfig.length() > 0) {
-								setConfigurationLocal(mStringLocalConfig);
-								mStringLocalConfig = "";
-							}
+            switch (msg.what)
+        		{
+        			case MTSCRAEvent.OnDeviceConnectionStateChanged:
+            			// OnDeviceStateChanged((MTConnectionState) msg.obj);
+        				break;
+        			case MTSCRAEvent.OnCardDataStateChanged:
+            			// OnCardDataStateChanged((MTCardDataState) msg.obj);
+        				break;
+        			case MTSCRAEvent.OnDataReceived:
+                        try {
+                            sendCardData();
+                        } catch(JSONException e) {
 
-							return true;
-						}
-						break;
+                        }
 
-					case MagTekSCRA.DEVICE_MESSAGE_DATA_ERROR:
-						sendCardError();
-						break;
+        				// OnCardDataReceived((IMTCardData) msg.obj);
+        				break;
+        			case MTSCRAEvent.OnDeviceResponse:
+            			// OnDeviceResponse((String) msg.obj);
+        				break;
+        			case MTEMVEvent.OnTransactionStatus:
+        				// OnTransactionStatus((byte[]) msg.obj);
+        				break;
+        			case MTEMVEvent.OnDisplayMessageRequest:
+        				// OnDisplayMessageRequest((byte[]) msg.obj);
+        				break;
+        			case MTEMVEvent.OnUserSelectionRequest:
+        				// OnUserSelectionRequest((byte[]) msg.obj);
+        				break;
+        			case MTEMVEvent.OnARQCReceived:
+        				// OnARQCReceived((byte[]) msg.obj);
+        				break;
+        			case MTEMVEvent.OnTransactionResult:
+        				// OnTransactionResult((byte[]) msg.obj);
+        				break;
 
-					default:
-						if(msg.obj != null) {
-							return true;
-						}
-						break;
-				};
-			} catch(Exception ex) {
-				;
-			}
+        			case MTEMVEvent.OnEMVCommandResult:
+        				// OnEMVCommandResult((byte[]) msg.obj);
+        				break;
+
+        			case MTEMVEvent.OnDeviceExtendedResponse:
+            			// OnDeviceExtendedResponse((String) msg.obj);
+        				break;
+        		}
 
 			return false;
 		}
@@ -510,17 +480,15 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
     		if(AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction()))
     		{
             	mbAudioConnected=false;
-            	if(mMTSCRA.getDeviceType()==MagTekSCRA.DEVICE_TYPE_AUDIO)
+
+                if(mMTSCRA.isDeviceConnected())
             	{
-            		if(mMTSCRA.isDeviceConnected())
-            		{
             			mMTSCRA.closeDevice();
-            		}
             	}
     		}
     	}
     }
-	
+
 	public class headSetBroadCastReceiver extends BroadcastReceiver
     {
 
@@ -536,30 +504,31 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
                     int headSetState = intent.getIntExtra("state", 0);      //get the headset state property
                     int hasMicrophone = intent.getIntExtra("microphone", 0);//get the headset microphone property
   				    //mCardDataEditText.setText("Headset.Detected=" + headSetState + ",Microphone.Detected=" + hasMicrophone);
-
+                    Log.i("MTSCRA", "headSetState " + Integer.toString(headSetState));
+                    Log.i("MTSCRA", "hasMicrophone " + Integer.toString(hasMicrophone));
                     if( (headSetState == 1) && (hasMicrophone == 1))        //headset was unplugged & has no microphone
                     {
                     	mbAudioConnected=true;
+
+                        if (!mMTSCRA.isDeviceConnected()) {
+                            mMTSCRA.openDevice();
+                        }
                     }
-                    else 
+                    else
                     {
                     	mbAudioConnected=false;
-                    	if(mMTSCRA.getDeviceType()==MagTekSCRA.DEVICE_TYPE_AUDIO)
-                    	{
-                    		if(mMTSCRA.isDeviceConnected())
-                    		{
-                    			mMTSCRA.closeDevice();
-                    		}
-                    	}
-                	
+                    	if( mMTSCRA.isDeviceConnected() )
+                        {
+                                mMTSCRA.closeDevice();
+                        }
                     }
 
-                }           
-        		
+                }
+
         	}
         	catch(Exception ex)
         	{
-        		
+
         	}
 
         }
@@ -579,7 +548,7 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
 		fis.close();
 		return data;
 	}
-	
+
 	public static void WriteSettings(Context context, String data, String file) throws IOException {
 		FileOutputStream fos= null;
 		OutputStreamWriter osw = null;
@@ -589,5 +558,5 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
 		osw.close();
 		fos.close();
 	}
-	
+
 }
