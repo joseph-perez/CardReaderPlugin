@@ -273,7 +273,7 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
 			pr = new PluginResult(PluginResult.Status.OK, mMTSCRA.isDeviceConnected());
 		}
 		else if(action.equals("clearCardData")) {
-			pr = new PluginResult(PluginResult.Status.OK);
+			pr = new PluginResult(PluginResult.Status.OK, clearBuffers());
 		}
 		else if(action.equals("getTrack1")) {
 			pr = new PluginResult(PluginResult.Status.OK, mMTSCRA.getTrack1());
@@ -411,6 +411,14 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
 		mEventListenerCb.success(response);
 	}
 
+    private boolean clearBuffers() {
+        if ( mMTSCRA.isDeviceConnected() ) {
+            mMTSCRA.clearBuffers();
+        }
+
+        return true;
+    }
+
 	private void sendCardError() {
 		mEventListenerCb.error("That card was not swiped properly. Please try again.");
 	}
@@ -509,6 +517,7 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
                     if( (headSetState == 1) && (hasMicrophone == 1))        //headset was unplugged & has no microphone
                     {
                     	mbAudioConnected=true;
+                        maxVolume();
 
                         if (!mMTSCRA.isDeviceConnected()) {
                             mMTSCRA.openDevice();
@@ -517,9 +526,10 @@ public class MagTekUDynamoPlugin extends CordovaPlugin {
                     else
                     {
                     	mbAudioConnected=false;
+                        minVolume();
                     	if( mMTSCRA.isDeviceConnected() )
                         {
-                                mMTSCRA.closeDevice();
+                            mMTSCRA.closeDevice();
                         }
                     }
 
