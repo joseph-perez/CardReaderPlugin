@@ -34,6 +34,13 @@
         <framework src="audiotoolbox.framework" />
         <framework src="foundation.framework" />
         <framework src="externalaccessory.framework" />
+        
+        <config-file target="*-Info.plist" parent="UISupportedExternalAccessoryProtocols">
+          <array>
+        		<string>COM.MAGTEK.CDYNAMO</string>
+        		<string>com.magtek.idynamo</string>
+      	  </array>
+        </config-file>
     </platform>
 
     <platform name="android">

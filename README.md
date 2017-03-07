@@ -8,7 +8,7 @@ Installation
 Install the plugin using CLI
 
 ```
-cordova plugin add https://github.com/pickupman/CardReaderPlugin.git
+cordova plugin add https://github.com/joseph-perez/CardReaderPlugin
 ```
 
 Methods
