@@ -1,3 +1,4 @@
+cordova.define("com.egood.magtek-udynamo.MagTek", function(require, exports, module) {
     'use strict';
 
     var MagTek = ( typeof MagTek === 'undefined' ? {} : MagTek );
@@ -24,7 +25,7 @@
 
     MagTek.openDevice = function(callback, error) {
         var success = function(status) { callback(status); }
-        var fail_handler = error || fail;;
+        var fail_handler = error || fail;
 
         cordova.exec(success, fail_handler, 'com.egood.magtek-udynamo', 'openDevice', []);
     };
@@ -165,6 +166,7 @@
 
         cordova.exec(success, fail_handler, 'com.egood.magtek-udynamo', 'getCardStatus', []);
     };
+    
 
 
     //..... A few methods skipped
@@ -176,5 +178,15 @@
 
         cordova.exec(success, fail_handler, 'com.egood.magtek-udynamo', 'setDeviceType', [device_type]);
     };
+    
+    MagTek.fireEvent = function (event, data) {
+    	var customEvent = new CustomEvent(event, { 'detail': data} );
+    	window.dispatchEvent(customEvent);
+    };
+
+    MagTek.on = function (event, callback, scope) {
+    	window.addEventListener(event, callback.bind(scope || window));
+    };
 
     module.exports = MagTek;
+});

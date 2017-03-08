@@ -118,9 +118,10 @@ While card reader is connected, wait for a swipe event to occur
 ```
 window.cordova.plugins.MagTek.listenForEvents(function(card_data) {
 
-}, function(error) {
+}, ['TRANS_EVENT_ERROR', 'TRANS_EVENT_OK', 'TRANS_EVENT_START'],
+function(error) {
 
-}, ['TRANS_EVENT_ERROR', 'TRANS_EVENT_OK', 'TRANS_EVENT_START']);
+});
 ```
 
 After processing card data, close the device to save battery life

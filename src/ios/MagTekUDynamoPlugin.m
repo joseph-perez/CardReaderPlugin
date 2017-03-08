@@ -23,12 +23,12 @@
                                              selector:@selector(trackDataReady:)
                                                  name:@"trackDataReadyNotification"
                                                object:nil];
-    /*
+    
      [[NSNotificationCenter defaultCenter] addObserver:self
-     selector:@selector(devConnStatusChange)
+     selector:@selector(devConnStatusChange:)
      name:@"devConnectionNotification"
      object:nil];
-     */
+		
     NSLog(@"MagTek Plugin initialized");
 }
 
@@ -345,8 +345,17 @@
         [self.mMagTek clearBuffers];
 
         CDVPluginResult* pluginResult = nil;
-		pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:data];
-		[self.commandDelegate sendPluginResult:pluginResult callbackId:self.mTrackDataListenerCallbackId];
+				NSString* cardData = nil;
+		// pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:data];
+				NSError *error = NULL;
+
+				cardData = [[NSString alloc] initWithData:
+																[NSJSONSerialization dataWithJSONObject:data
+																																options:0
+																																	error:&error]
+																										 encoding:NSUTF8StringEncoding];
+			[self fireEvent:@"magtek_swipe_success" withData:cardData];
+		// [self.commandDelegate sendPluginResult:pluginResult callbackId:self.mTrackDataListenerCallbackId];
     }
 }
 
@@ -452,6 +461,47 @@
     [self performSelectorOnMainThread:@selector(onDataEvent:)
                            withObject:status
                         waitUntilDone:NO];
+}
+
+- (void)devConnStatusChange:(NSNotification *)notification
+{
+	
+	BOOL isDeviceConnected = [self.mMagTek isDeviceConnected];
+	if (isDeviceConnected) {
+		[self fireEvent:@"magtek_connected"];
+	} else {
+		[self fireEvent:@"magtek_disconnected"];
+	}
+}
+
+/**
+* Pass event to method overload.
+* 
+* @param {NSString*} event
+*        The event name
+*/
+- (void)fireEvent:(NSString*)event {
+    [self fireEvent:event withData:NULL];
+}
+
+/**
+* Format and send event to JavaScript side.
+* 
+* @param {NSString*} event
+*        The event name
+* @param {NSString*} data
+*        Details about the event
+*/
+- (void) fireEvent:(NSString*)event withData:(NSString*) data {
+		NSLog(@"MagTek fire event!");
+    NSString* js;
+    NSString* dataArg = data ? 
+    [NSString stringWithFormat: @"','%@", data] : @"";
+
+    js = [NSString stringWithFormat: 
+        @"cordova.plugins.MagTek.fireEvent('%@%@');", event, dataArg];
+
+    [self.commandDelegate evalJs:js];
 }
 
 @end
