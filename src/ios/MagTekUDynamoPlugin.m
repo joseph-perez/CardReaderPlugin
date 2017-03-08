@@ -493,7 +493,6 @@
 *        Details about the event
 */
 - (void) fireEvent:(NSString*)event withData:(NSString*) data {
-		NSLog(@"MagTek fire event!");
     NSString* js;
     NSString* dataArg = data ? 
     [NSString stringWithFormat: @"','%@", data] : @"";
