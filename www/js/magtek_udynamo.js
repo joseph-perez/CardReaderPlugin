@@ -1,4 +1,3 @@
-cordova.define("com.egood.magtek-udynamo.MagTek", function(require, exports, module) {
     'use strict';
 
     var MagTek = ( typeof MagTek === 'undefined' ? {} : MagTek );
@@ -189,4 +188,3 @@ cordova.define("com.egood.magtek-udynamo.MagTek", function(require, exports, mod
     };
 
     module.exports = MagTek;
-});
