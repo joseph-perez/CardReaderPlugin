@@ -434,6 +434,7 @@
              *        TRANS_STATUS_OK may interfere with reader communication.
              *
              */
+						 [self fireEvent:@"magtek_swipe_processing"];
             break;
 
         case TRANS_STATUS_ERROR:
@@ -444,6 +445,7 @@
                 NSLog(@"TRANS_STATUS_ERROR");
 #endif
                 //[self updateConnStatus];
+								[self fireEvent:@"magtek_swipe_error"];
             }
 
             break;
