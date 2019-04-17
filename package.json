@@ -1,5 +1,5 @@
 {
-  "name": "cardreaderplugin",
+  "name": "com.egood.magtek-udynamo",
   "version": "1.0.0",
   "description": "Allow using the MagTek uDynamo Card Reader with PhoneGap apps",
   "main": "index.js",
