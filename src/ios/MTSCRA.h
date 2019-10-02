@@ -4,29 +4,19 @@
 //
 //  Created by Imran Jahanzeb on 1/31/12.
 //  Copyright (c) 2012 MagTek. All rights reserved.
-//ƒ
-//
-//  MTSCRA.h
-//  MTSCRA
-//
-//  Created by Imran Jahanzeb on 1/23/12.
-//  Copyright (c) 2012 MagTek. All rights reserved.
-//
 
-//#import <Foundation/Foundation.h>
-
-//@interface MTSCRA : NSObject
-//  Copyright 2011 MagTek. All rights reserved.
-//
 
 #import <AudioUnit/AudioUnit.h>
 #import <Foundation/Foundation.h>
 #import <AudioToolbox/AudioToolbox.h>
 #import <CoreBluetooth/CoreBluetooth.h>
-#import <ExternalAccessory/ExternalAccessory.h>
-//#import "MTCardData.h"
-#import "AVFoundation/AVAudioSession.h"
+#if TARGET_OS_IPHONE
 
+#import <ExternalAccessory/ExternalAccessory.h>
+
+//#import "MTCardData.h"
+#import "AVFoundation/AVFoundation.h"
+#endif
 
 #warning Notification method will be deprecated on next release, please use delegate
 //#define _DBGPRNT
@@ -88,7 +78,7 @@ typedef NSUInteger MTSCRATransactionData;
 
 typedef NS_ENUM(NSUInteger, MTSCRATransactionStatus)
 {
-	TRANS_STATUS_OK,
+    TRANS_STATUS_OK,
     TRANS_STATUS_START,
     TRANS_STATUS_ERROR
 };
@@ -96,7 +86,7 @@ typedef NS_ENUM(NSUInteger, MTSCRATransactionStatus)
 
 enum
 {
-	TRANS_EVENT_OK = 1,
+    TRANS_EVENT_OK = 1,
     TRANS_EVENT_ERROR=2,
     TRANS_EVENT_START = 4,
     
@@ -105,7 +95,7 @@ typedef NSUInteger MTSCRATransactionEvent;
 
 enum
 {
-	CAP_MASKING = 1,
+    CAP_MASKING = 1,
     CAP_ENCRYPTION=2,
     CAP_CARD_AUTH = 4,
     CAP_DEVICE_AUTH = 8,
@@ -116,14 +106,29 @@ typedef NSUInteger MTSCRACapabilities;
 
 enum
 {
-    MAGTEKAUDIOREADER,
+    MAGTEKAUDIOREADER, //iOS Only
     MAGTEKIDYNAMO,
     MAGTEKDYNAMAX,
     MAGTEKEDYNAMO,
+    MAGTEKUSBMSR, //OSX Only
+    MAGTEKKDYNAMO,
+    MAGTEKTDYNAMO,
     MAGTEKNONE
     
 };
 typedef NSUInteger MTSCRADeviceType;
+
+
+enum
+{
+    BLE,
+    BLE_EMV,
+    USB,
+    NONE
+};
+typedef NSUInteger ConnectionType;
+ 
+
 
 enum
 {
@@ -136,16 +141,29 @@ enum
 };
 typedef int MTSCRABLEState;
 
+@interface MTDeviceInfo : NSObject
+@property(nonatomic, strong) NSString *Address;
+@property(nonatomic, strong) NSString *Name;
+@property(nonatomic, strong) NSString *ProductID;
+@property ConnectionType connectionType;
+@end
 
 @interface MTCardData : NSObject
 {
     
 }
+- (id)initWithCardData:(NSString*)cardData;
 
 @property(nonatomic, strong) NSString *cardIIN;
 @property(nonatomic, strong) NSString *cardData;
 @property(nonatomic, strong) NSString *cardLast4;
 @property(nonatomic, strong) NSString *cardName;
+
+@property (strong, nonatomic) NSString *cardLastName;
+@property (strong, nonatomic) NSString *cardMiddleName;
+@property (strong, nonatomic) NSString *cardFirstName;
+
+
 @property(nonatomic, strong) NSString *cardExpDate;
 @property(nonatomic, strong) NSString *cardServiceCode;
 @property(nonatomic, strong) NSString *cardStatus;
@@ -184,6 +202,7 @@ typedef int MTSCRABLEState;
 @property(nonatomic, strong) NSString *firmware;
 @property(nonatomic, strong) NSString *tagValue;
 @property(nonatomic) int magnePrintLength;
+@property(nonatomic) int cardType;
 @property(nonatomic, strong) NSString *cardExpDateMonth;
 @property(nonatomic, strong) NSString *cardExpDateYear;
 @property(nonatomic, strong) NSString *cardPAN;
@@ -203,7 +222,7 @@ typedef int MTSCRABLEState;
 - (void) bleReaderDidDiscoverPeripheral;
 - (void) bleReaderStateUpdated:(MTSCRABLEState)state;
 - (void) onDeviceResponse:(NSData*)data;
-
+- (void) onDeviceError:(NSError*)error;
 //EMV delegate
 - (void) OnTransactionStatus:(NSData*)data;
 - (void) OnDisplayMessageRequest:(NSData*)data;
@@ -212,6 +231,11 @@ typedef int MTSCRABLEState;
 - (void) OnTransactionResult:(NSData*)data;
 - (void) OnEMVCommandResult:(NSData*)data;
 - (void) onDeviceExtendedResponse:(NSString*)data;
+- (void) deviceNotPaired;
+
+
+
+- (void) onDeviceList:(id)instance connectionType:(ConnectionType)connectionType deviceList:(NSArray*)deviceList;
 @end
 
 
@@ -219,15 +243,20 @@ typedef int MTSCRABLEState;
 {
 @private
     
-	NSString *cardIIN;
-	NSString *cardData;
-	NSString *cardLast4;
-	NSString *cardName;
-	NSString *cardExpDate;
-	NSString *cardServiceCode;
-	NSString *cardStatus;
-	NSString *responseData;
-	NSString *maskedTracks;
+    NSString *cardIIN;
+    NSString *cardData;
+    NSString *cardLast4;
+    NSString *cardName;
+    
+    NSString *cardLastName;
+    NSString *cardMiddleName;
+    NSString *cardFirstName;
+    
+    NSString *cardExpDate;
+    NSString *cardServiceCode;
+    NSString *cardStatus;
+    NSString *responseData;
+    NSString *maskedTracks;
     NSString *stdTrack1;
     NSString *stdTrack2;
     NSString *stdTrack3;
@@ -238,7 +267,7 @@ typedef int MTSCRABLEState;
     NSString *maskedTrack1;
     NSString *maskedTrack2;
     NSString *maskedTrack3;
-	NSString *trackDecodeStatus;
+    NSString *trackDecodeStatus;
     NSString *encryptedMagneprint;
     NSString *magneprintStatus;
     NSString *deviceSerialNumber;
@@ -258,9 +287,10 @@ typedef int MTSCRABLEState;
     NSString *additionalInfoTrack1;
     NSString *additionalInfoTrack2;
     NSString *responseType;
-	NSString *batteryLevel;
-	NSString *swipeCount;
-	
+    NSString *batteryLevel;
+    NSString *swipeCount;
+    
+    
     AudioUnit					rioUnit;
     AURenderCallbackStruct		inputProc;
     
@@ -274,19 +304,20 @@ typedef int MTSCRABLEState;
     
     Byte *commandBits;
     int commandBitsIndex;
-    
+#if TARGET_OS_IPHONE
     EAAccessory * _accessory;
-	EASession *   _session;
-	EAAccessoryManager *eaAccessory;
-    NSMutableString *dataFromiDynamo;
-	NSMutableString *deviceProtocolString;
-	NSMutableString *configParams;
-    
+    EASession *   _session;
+    EAAccessoryManager *eaAccessory;
     AVAudioSession *audioSession;
+#endif
+    NSMutableString *dataFromiDynamo;
+    NSMutableString *deviceProtocolString;
+    NSMutableString *configParams;
+    
+    
     
     MTSCRADeviceType devType;
 }
-
 
 void audioReaderDelegate(void*self, int status);
 
@@ -432,6 +463,10 @@ void audioReaderDelegate(void*self, int status);
 //Sets the type of device to Open
 -(void) setDeviceType: (UInt32)deviceType;
 
+
+
+
+
 //Retrieves device opened status
 - (BOOL) isDeviceOpened;
 
@@ -460,7 +495,7 @@ void audioReaderDelegate(void*self, int status);
 - (void)startScanningForPeripherals;
 
 // Sets the UUID String
-- (void)setUUIDString:(NSString *)uuidString;
+- (void)setUUIDString:(NSString *)uuidString __deprecated_msg("setUUIDString will be deprecated in future, use setAddress instead.");
 
 // Retrieves the currently connected Peripheral
 - (CBPeripheral *)getConnectedPeripheral;
@@ -489,12 +524,31 @@ void audioReaderDelegate(void*self, int status);
 //send extended command to EMV Devices;
 - (int) sendExtendedCommand:(NSString*)commandIn;
 
+//Return Card Data TLV Pay load
 - (NSString*) getTLVPayload;
+
+//Set device address for BLE devices.
+- (void)setAddress:(NSString *)address;
+
+//FOR USB ONLY
+- (void) setConnectionType: (ConnectionType)connectionType;
+- (ConnectionType)getConnectionType;
 
 
 
 
 //MTSCRA Delegate
 @property (nonatomic, weak) id <MTSCRAEventDelegate> delegate;
+
+
+
+
+
+#pragma mark MAC_OSX_FUNCTIONS
+
+- (void)requestDeviceList:(ConnectionType)type;
+
+// USB Only
+- (int)getProductID;
 
 @end
